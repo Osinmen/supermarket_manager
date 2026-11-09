@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
-
+import '../core/utils/ids.dart';
 import '../core/utils/money.dart';
 import 'converters/money_converter.dart';
 import 'enums.dart';
@@ -24,6 +24,7 @@ part 'app_database.g.dart';
     AuditLogs,
   ],
 )
+
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
