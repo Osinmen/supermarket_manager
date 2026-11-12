@@ -22,14 +22,12 @@ abstract final class PasswordHasher {
     }
     return null;
   }
-
   /// Runs in an isolate so the UI doesn't freeze while bcrypt works.
   static Future<String> hash(String password) {
     return Isolate.run(
       () => BCrypt.hashpw(password, BCrypt.gensalt(logRounds: _cost)),
     );
   }
-
   static Future<bool> verify(String password, String hash) {
     return Isolate.run(() {
       try {
