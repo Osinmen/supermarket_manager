@@ -16,7 +16,6 @@ class AuthController extends Notifier<AppUser?> {
         .read(userRepositoryProvider)
         .login(username: username, password: password);
   }
-
   Future<void> createFirstAdmin({
     required String fullName,
     required String username,
@@ -42,7 +41,6 @@ class AuthController extends Notifier<AppUser?> {
 
 final authControllerProvider =
     NotifierProvider<AuthController, AppUser?>(AuthController.new);
-
 /// Whether any account exists yet. Decides first-run setup vs login.
 final hasUsersProvider = FutureProvider<bool>((ref) {
   return ref.watch(userRepositoryProvider).hasAnyUser();

@@ -5,6 +5,7 @@ import '../core/security/permissions.dart';
 import '../core/theme/app_colors.dart';
 import '../features/auth/domain/app_user.dart';
 import '../features/auth/presentation/auth_controller.dart';
+import 'package:supermarket/features/auth/presentation/users_screen.dart';
 
 class _NavItem {
   const _NavItem(this.label, this.icon, [this.permission]);
@@ -57,7 +58,11 @@ class _AppShellState extends ConsumerState<AppShell> {
             child: Column(
               children: [
                 _TopBar(title: current.label, user: user),
-                Expanded(child: _PlaceholderPage(title: current.label)),
+                                Expanded(
+                  child: current.label == 'Users'
+                      ? const UsersScreen()
+                      : _PlaceholderPage(title: current.label),
+                ),
               ],
             ),
           ),
