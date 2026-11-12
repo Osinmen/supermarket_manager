@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supermarket/core/security/permissions.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/security/password_hasher.dart';
@@ -20,11 +21,185 @@ class UserRepository {
   /// True once at least one account exists. Decides first-run vs login.
   Future<bool> hasAnyUser() async {
     final count = _db.users.id.count();
-    final row =
-        await (_db.selectOnly(_db.users)..addColumns([count])).getSingle();
+    final row = await (_db.selectOnly(
+      _db.users,
+    )..addColumns([count])).getSingle();
     return (row.read(count) ?? 0) > 0;
   }
+  // ---------------------------------------------------------- user admin
 
+  /// A live list for the Users screen.
+  Stream<List<AppUser>> watchAll() {
+    return (_db.select(_db.users)
+          ..orderBy([(u) => OrderingTerm.asc(u.fullName)]))
+        .watch()
+        .map((rows) => rows.map((r) => _toAppUser(r)).toList());
+  }
+
+  Future<AppUser> createUser({
+    required AppUser actor,
+    required String fullName,
+    required String username,
+    required String password,
+    required UserRole role,
+  }) async {
+    Permissions.require(actor.role, Permission.manageUsers);
+
+    final cleanName = _validateFullName(fullName);
+    final cleanUsername = _validateUsername(username);
+    final passwordProblem = PasswordHasher.validate(password);
+    if (passwordProblem != null) throw ValidationException(passwordProblem);
+
+    final hash = await PasswordHasher.hash(password);
+
+    return _db.transaction(() async {
+      final clash = await (_db.select(_db.users)
+            ..where((u) => u.username.equals(cleanUsername)))
+          .getSingleOrNull();
+      if (clash != null) {
+        throw DuplicateException(
+          'Username "$cleanUsername" is already taken.',
+        );
+      }
+
+      final row = await _db.into(_db.users).insertReturning(
+            UsersCompanion.insert(
+              username: cleanUsername,
+              fullName: cleanName,
+              passwordHash: hash,
+              role: role,
+            ),
+          );
+
+      await _audit.log(
+        userId: actor.id,
+        action: 'user.created',
+        details: 'username=$cleanUsername role=${role.name}',
+      );
+      return _toAppUser(row);
+    });
+  }
+
+  Future<void> changeRole({
+    required AppUser actor,
+    required String userId,
+    required UserRole role,
+  }) async {
+    Permissions.require(actor.role, Permission.manageUsers);
+
+    if (userId == actor.id) {
+      throw const ValidationException("You can't change your own role.");
+    }
+
+    await _db.transaction(() async {
+      final user = await _getOrThrow(userId);
+      if (user.role == role) return;
+
+      if (user.role == UserRole.admin) {
+        await _ensureAnotherActiveAdmin(excludingId: userId);
+      }
+
+      await (_db.update(_db.users)..where((u) => u.id.equals(userId))).write(
+        UsersCompanion(role: Value(role), updatedAt: Value(DateTime.now())),
+      );
+
+      await _audit.log(
+        userId: actor.id,
+        action: 'user.role_changed',
+        details: 'id=$userId ${user.role.name} -> ${role.name}',
+      );
+    });
+  }
+
+  /// Accounts are disabled, never deleted: sales and audit logs point to them.
+  Future<void> setActive({
+    required AppUser actor,
+    required String userId,
+    required bool isActive,
+  }) async {
+    Permissions.require(actor.role, Permission.manageUsers);
+
+    if (!isActive && userId == actor.id) {
+      throw const ValidationException("You can't disable your own account.");
+    }
+
+    await _db.transaction(() async {
+      final user = await _getOrThrow(userId);
+
+      if (!isActive && user.role == UserRole.admin) {
+        await _ensureAnotherActiveAdmin(excludingId: userId);
+      }
+
+      await (_db.update(_db.users)..where((u) => u.id.equals(userId))).write(
+        UsersCompanion(
+          isActive: Value(isActive),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+      await _audit.log(
+        userId: actor.id,
+        action: isActive ? 'user.enabled' : 'user.disabled',
+        details: 'id=$userId username=${user.username}',
+      );
+    });
+  }
+
+  Future<void> resetPassword({
+    required AppUser actor,
+    required String userId,
+    required String newPassword,
+  }) async {
+    Permissions.require(actor.role, Permission.manageUsers);
+
+    final problem = PasswordHasher.validate(newPassword);
+    if (problem != null) throw ValidationException(problem);
+
+    final hash = await PasswordHasher.hash(newPassword);
+
+    await _db.transaction(() async {
+      final user = await _getOrThrow(userId);
+
+      await (_db.update(_db.users)..where((u) => u.id.equals(userId))).write(
+        UsersCompanion(
+          passwordHash: Value(hash),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+      await _audit.log(
+        userId: actor.id,
+        action: 'user.password_reset',
+        details: 'id=$userId username=${user.username}',
+      );
+    });
+  }
+
+  Future<User> _getOrThrow(String id) async {
+    final row = await (_db.select(_db.users)..where((u) => u.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) throw const NotFoundException('User not found.');
+    return row;
+  }
+
+  /// Stops the app from ending up with no one who can manage users.
+  Future<void> _ensureAnotherActiveAdmin({required String excludingId}) async {
+    final count = _db.users.id.count();
+    final query = _db.selectOnly(_db.users)
+      ..addColumns([count])
+      ..where(
+        _db.users.role.equalsValue(UserRole.admin) &
+            _db.users.isActive.equals(true) &
+            _db.users.id.equals(excludingId).not(),
+      );
+    final others = await query.map((row) => row.read(count)).getSingle();
+
+    if ((others ?? 0) == 0) {
+      throw const ValidationException(
+        'There must be at least one active admin.',
+      );
+    }
+  }
   /// Creates the very first account, always an admin. Refuses to run if any
   /// user already exists, so it can't be used to sneak in a second admin.
   Future<AppUser> createFirstAdmin({
@@ -47,8 +222,9 @@ class UserRepository {
           'Setup has already been completed.',
         );
       }
-
-      final row = await _db.into(_db.users).insertReturning(
+      final row = await _db
+          .into(_db.users)
+          .insertReturning(
             UsersCompanion.insert(
               username: cleanUsername,
               fullName: cleanName,
@@ -57,7 +233,6 @@ class UserRepository {
               lastLoginAt: Value(DateTime.now()),
             ),
           );
-
       await _audit.log(
         userId: row.id,
         action: 'user.first_admin_created',
@@ -74,14 +249,12 @@ class UserRepository {
     // One message for "no such user" and "wrong password", so the screen
     // never reveals which usernames exist.
     const failure = AuthException('Wrong username or password.');
-
     final cleanUsername = username.trim().toLowerCase();
     if (cleanUsername.isEmpty || password.isEmpty) throw failure;
 
-    final row = await (_db.select(_db.users)
-          ..where((u) => u.username.equals(cleanUsername)))
-        .getSingleOrNull();
-
+    final row = await (_db.select(
+      _db.users,
+    )..where((u) => u.username.equals(cleanUsername))).getSingleOrNull();
     if (row == null) {
       await _audit.log(
         action: 'auth.login_failed',
@@ -89,7 +262,6 @@ class UserRepository {
       );
       throw failure;
     }
-
     final ok = await PasswordHasher.verify(password, row.passwordHash);
     if (!ok) {
       await _audit.log(
@@ -99,7 +271,6 @@ class UserRepository {
       );
       throw failure;
     }
-
     // Checked after the password so a stranger can't probe which accounts
     // are disabled.
     if (!row.isActive) {
@@ -107,7 +278,6 @@ class UserRepository {
         'This account is disabled. Ask an admin for help.',
       );
     }
-
     final now = DateTime.now();
     await _db.transaction(() async {
       await (_db.update(_db.users)..where((u) => u.id.equals(row.id))).write(
@@ -115,16 +285,13 @@ class UserRepository {
       );
       await _audit.log(userId: row.id, action: 'auth.login');
     });
-
     return _toAppUser(row, lastLoginAt: now);
   }
 
   Future<void> recordLogout(String userId) {
     return _audit.log(userId: userId, action: 'auth.logout');
   }
-
   // ------------------------------------------------------------ internals
-
   AppUser _toAppUser(User row, {DateTime? lastLoginAt}) {
     return AppUser(
       id: row.id,
@@ -135,7 +302,6 @@ class UserRepository {
       lastLoginAt: lastLoginAt ?? row.lastLoginAt,
     );
   }
-
   String _validateFullName(String input) {
     final value = input.trim();
     if (value.isEmpty || value.length > 80) {
@@ -154,7 +320,12 @@ class UserRepository {
     }
     return value;
   }
+
+  
 }
+final usersProvider = StreamProvider<List<AppUser>>((ref) {
+  return ref.watch(userRepositoryProvider).watchAll();
+});
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository(
