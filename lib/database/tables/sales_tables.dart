@@ -39,6 +39,8 @@ class SaleItems extends Table {
 
   IntColumn get quantity => integer()();
   IntColumn get lineTotal => integer().map(const MoneyConverter())();
+  IntColumn get taxBasisPoints => integer()();
+  IntColumn get tax => integer().map(const MoneyConverter())();
 
   @override
   Set<Column> get primaryKey => {id};

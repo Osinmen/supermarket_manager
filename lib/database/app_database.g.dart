@@ -2354,6 +2354,26 @@ class $SaleItemsTable extends SaleItems
         type: DriftSqlType.int,
         requiredDuringInsert: true,
       ).withConverter<Money>($SaleItemsTable.$converterlineTotal);
+  static const VerificationMeta _taxBasisPointsMeta = const VerificationMeta(
+    'taxBasisPoints',
+  );
+  @override
+  late final GeneratedColumn<int> taxBasisPoints = GeneratedColumn<int>(
+    'tax_basis_points',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Money, int> tax =
+      GeneratedColumn<int>(
+        'tax',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<Money>($SaleItemsTable.$convertertax);
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2364,6 +2384,8 @@ class $SaleItemsTable extends SaleItems
     unitPrice,
     quantity,
     lineTotal,
+    taxBasisPoints,
+    tax,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2423,6 +2445,17 @@ class $SaleItemsTable extends SaleItems
     } else if (isInserting) {
       context.missing(_quantityMeta);
     }
+    if (data.containsKey('tax_basis_points')) {
+      context.handle(
+        _taxBasisPointsMeta,
+        taxBasisPoints.isAcceptableOrUnknown(
+          data['tax_basis_points']!,
+          _taxBasisPointsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_taxBasisPointsMeta);
+    }
     return context;
   }
 
@@ -2468,6 +2501,16 @@ class $SaleItemsTable extends SaleItems
           data['${effectivePrefix}line_total'],
         )!,
       ),
+      taxBasisPoints: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tax_basis_points'],
+      )!,
+      tax: $SaleItemsTable.$convertertax.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}tax'],
+        )!,
+      ),
     );
   }
 
@@ -2478,6 +2521,7 @@ class $SaleItemsTable extends SaleItems
 
   static TypeConverter<Money, int> $converterunitPrice = const MoneyConverter();
   static TypeConverter<Money, int> $converterlineTotal = const MoneyConverter();
+  static TypeConverter<Money, int> $convertertax = const MoneyConverter();
 }
 
 class SaleItem extends DataClass implements Insertable<SaleItem> {
@@ -2489,6 +2533,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
   final Money unitPrice;
   final int quantity;
   final Money lineTotal;
+  final int taxBasisPoints;
+  final Money tax;
   const SaleItem({
     required this.id,
     required this.saleId,
@@ -2498,6 +2544,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     required this.unitPrice,
     required this.quantity,
     required this.lineTotal,
+    required this.taxBasisPoints,
+    required this.tax,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2518,6 +2566,10 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
         $SaleItemsTable.$converterlineTotal.toSql(lineTotal),
       );
     }
+    map['tax_basis_points'] = Variable<int>(taxBasisPoints);
+    {
+      map['tax'] = Variable<int>($SaleItemsTable.$convertertax.toSql(tax));
+    }
     return map;
   }
 
@@ -2531,6 +2583,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       unitPrice: Value(unitPrice),
       quantity: Value(quantity),
       lineTotal: Value(lineTotal),
+      taxBasisPoints: Value(taxBasisPoints),
+      tax: Value(tax),
     );
   }
 
@@ -2548,6 +2602,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       unitPrice: serializer.fromJson<Money>(json['unitPrice']),
       quantity: serializer.fromJson<int>(json['quantity']),
       lineTotal: serializer.fromJson<Money>(json['lineTotal']),
+      taxBasisPoints: serializer.fromJson<int>(json['taxBasisPoints']),
+      tax: serializer.fromJson<Money>(json['tax']),
     );
   }
   @override
@@ -2562,6 +2618,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       'unitPrice': serializer.toJson<Money>(unitPrice),
       'quantity': serializer.toJson<int>(quantity),
       'lineTotal': serializer.toJson<Money>(lineTotal),
+      'taxBasisPoints': serializer.toJson<int>(taxBasisPoints),
+      'tax': serializer.toJson<Money>(tax),
     };
   }
 
@@ -2574,6 +2632,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     Money? unitPrice,
     int? quantity,
     Money? lineTotal,
+    int? taxBasisPoints,
+    Money? tax,
   }) => SaleItem(
     id: id ?? this.id,
     saleId: saleId ?? this.saleId,
@@ -2583,6 +2643,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     unitPrice: unitPrice ?? this.unitPrice,
     quantity: quantity ?? this.quantity,
     lineTotal: lineTotal ?? this.lineTotal,
+    taxBasisPoints: taxBasisPoints ?? this.taxBasisPoints,
+    tax: tax ?? this.tax,
   );
   SaleItem copyWithCompanion(SaleItemsCompanion data) {
     return SaleItem(
@@ -2596,6 +2658,10 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
       unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
       lineTotal: data.lineTotal.present ? data.lineTotal.value : this.lineTotal,
+      taxBasisPoints: data.taxBasisPoints.present
+          ? data.taxBasisPoints.value
+          : this.taxBasisPoints,
+      tax: data.tax.present ? data.tax.value : this.tax,
     );
   }
 
@@ -2609,7 +2675,9 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
           ..write('barcode: $barcode, ')
           ..write('unitPrice: $unitPrice, ')
           ..write('quantity: $quantity, ')
-          ..write('lineTotal: $lineTotal')
+          ..write('lineTotal: $lineTotal, ')
+          ..write('taxBasisPoints: $taxBasisPoints, ')
+          ..write('tax: $tax')
           ..write(')'))
         .toString();
   }
@@ -2624,6 +2692,8 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
     unitPrice,
     quantity,
     lineTotal,
+    taxBasisPoints,
+    tax,
   );
   @override
   bool operator ==(Object other) =>
@@ -2636,7 +2706,9 @@ class SaleItem extends DataClass implements Insertable<SaleItem> {
           other.barcode == this.barcode &&
           other.unitPrice == this.unitPrice &&
           other.quantity == this.quantity &&
-          other.lineTotal == this.lineTotal);
+          other.lineTotal == this.lineTotal &&
+          other.taxBasisPoints == this.taxBasisPoints &&
+          other.tax == this.tax);
 }
 
 class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
@@ -2648,6 +2720,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
   final Value<Money> unitPrice;
   final Value<int> quantity;
   final Value<Money> lineTotal;
+  final Value<int> taxBasisPoints;
+  final Value<Money> tax;
   final Value<int> rowid;
   const SaleItemsCompanion({
     this.id = const Value.absent(),
@@ -2658,6 +2732,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     this.unitPrice = const Value.absent(),
     this.quantity = const Value.absent(),
     this.lineTotal = const Value.absent(),
+    this.taxBasisPoints = const Value.absent(),
+    this.tax = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SaleItemsCompanion.insert({
@@ -2669,6 +2745,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     required Money unitPrice,
     required int quantity,
     required Money lineTotal,
+    required int taxBasisPoints,
+    required Money tax,
     this.rowid = const Value.absent(),
   }) : saleId = Value(saleId),
        productId = Value(productId),
@@ -2676,7 +2754,9 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
        barcode = Value(barcode),
        unitPrice = Value(unitPrice),
        quantity = Value(quantity),
-       lineTotal = Value(lineTotal);
+       lineTotal = Value(lineTotal),
+       taxBasisPoints = Value(taxBasisPoints),
+       tax = Value(tax);
   static Insertable<SaleItem> custom({
     Expression<String>? id,
     Expression<String>? saleId,
@@ -2686,6 +2766,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     Expression<int>? unitPrice,
     Expression<int>? quantity,
     Expression<int>? lineTotal,
+    Expression<int>? taxBasisPoints,
+    Expression<int>? tax,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2697,6 +2779,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
       if (unitPrice != null) 'unit_price': unitPrice,
       if (quantity != null) 'quantity': quantity,
       if (lineTotal != null) 'line_total': lineTotal,
+      if (taxBasisPoints != null) 'tax_basis_points': taxBasisPoints,
+      if (tax != null) 'tax': tax,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2710,6 +2794,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
     Value<Money>? unitPrice,
     Value<int>? quantity,
     Value<Money>? lineTotal,
+    Value<int>? taxBasisPoints,
+    Value<Money>? tax,
     Value<int>? rowid,
   }) {
     return SaleItemsCompanion(
@@ -2721,6 +2807,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
       unitPrice: unitPrice ?? this.unitPrice,
       quantity: quantity ?? this.quantity,
       lineTotal: lineTotal ?? this.lineTotal,
+      taxBasisPoints: taxBasisPoints ?? this.taxBasisPoints,
+      tax: tax ?? this.tax,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2756,6 +2844,14 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
         $SaleItemsTable.$converterlineTotal.toSql(lineTotal.value),
       );
     }
+    if (taxBasisPoints.present) {
+      map['tax_basis_points'] = Variable<int>(taxBasisPoints.value);
+    }
+    if (tax.present) {
+      map['tax'] = Variable<int>(
+        $SaleItemsTable.$convertertax.toSql(tax.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2773,6 +2869,8 @@ class SaleItemsCompanion extends UpdateCompanion<SaleItem> {
           ..write('unitPrice: $unitPrice, ')
           ..write('quantity: $quantity, ')
           ..write('lineTotal: $lineTotal, ')
+          ..write('taxBasisPoints: $taxBasisPoints, ')
+          ..write('tax: $tax, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5744,6 +5842,8 @@ typedef $$SaleItemsTableCreateCompanionBuilder = SaleItemsCompanion Function({
   required Money unitPrice,
   required int quantity,
   required Money lineTotal,
+  required int taxBasisPoints,
+  required Money tax,
   Value<int> rowid,
 });
 typedef $$SaleItemsTableUpdateCompanionBuilder = SaleItemsCompanion Function({
@@ -5755,6 +5855,8 @@ typedef $$SaleItemsTableUpdateCompanionBuilder = SaleItemsCompanion Function({
   Value<Money> unitPrice,
   Value<int> quantity,
   Value<Money> lineTotal,
+  Value<int> taxBasisPoints,
+  Value<Money> tax,
   Value<int> rowid,
 });
 
@@ -5835,6 +5937,17 @@ class $$SaleItemsTableFilterComposer
   ColumnWithTypeConverterFilters<Money, Money, int> get lineTotal =>
       $composableBuilder(
         column: $table.lineTotal,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get taxBasisPoints => $composableBuilder(
+    column: $table.taxBasisPoints,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Money, Money, int> get tax =>
+      $composableBuilder(
+        column: $table.tax,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
 
@@ -5924,6 +6037,16 @@ class $$SaleItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get taxBasisPoints => $composableBuilder(
+    column: $table.taxBasisPoints,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tax => $composableBuilder(
+    column: $table.tax,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SalesTableOrderingComposer get saleId {
     final $$SalesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -5999,6 +6122,14 @@ class $$SaleItemsTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<Money, int> get lineTotal =>
       $composableBuilder(column: $table.lineTotal, builder: (column) => column);
+
+  GeneratedColumn<int> get taxBasisPoints => $composableBuilder(
+    column: $table.taxBasisPoints,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<Money, int> get tax =>
+      $composableBuilder(column: $table.tax, builder: (column) => column);
 
   $$SalesTableAnnotationComposer get saleId {
     final $$SalesTableAnnotationComposer composer = $composerBuilder(
@@ -6083,6 +6214,8 @@ class $$SaleItemsTableTableManager
                 Value<Money> unitPrice = const Value.absent(),
                 Value<int> quantity = const Value.absent(),
                 Value<Money> lineTotal = const Value.absent(),
+                Value<int> taxBasisPoints = const Value.absent(),
+                Value<Money> tax = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemsCompanion(
                 id: id,
@@ -6093,6 +6226,8 @@ class $$SaleItemsTableTableManager
                 unitPrice: unitPrice,
                 quantity: quantity,
                 lineTotal: lineTotal,
+                taxBasisPoints: taxBasisPoints,
+                tax: tax,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6105,6 +6240,8 @@ class $$SaleItemsTableTableManager
                 required Money unitPrice,
                 required int quantity,
                 required Money lineTotal,
+                required int taxBasisPoints,
+                required Money tax,
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemsCompanion.insert(
                 id: id,
@@ -6115,6 +6252,8 @@ class $$SaleItemsTableTableManager
                 unitPrice: unitPrice,
                 quantity: quantity,
                 lineTotal: lineTotal,
+                taxBasisPoints: taxBasisPoints,
+                tax: tax,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
