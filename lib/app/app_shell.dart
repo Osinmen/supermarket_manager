@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supermarket/database/tables/catalog_tables.dart';
+import 'package:supermarket/features/inventory/presentation/inventory_screen.dart';
+import 'package:supermarket/features/products/presentation/products_screen.dart';
 
 import '../core/security/permissions.dart';
 import '../core/theme/app_colors.dart';
@@ -54,18 +57,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             onSelect: (i) => setState(() => _selected = i),
             onLogout: () => ref.read(authControllerProvider.notifier).logout(),
           ),
-          Expanded(
-            child: Column(
-              children: [
-                _TopBar(title: current.label, user: user),
-                                Expanded(
-                  child: current.label == 'Users'
-                      ? const UsersScreen()
-                      : _PlaceholderPage(title: current.label),
-                ),
-              ],
-            ),
-          ),
+                        Expanded(child: _pageFor(current.label)),
         ],
       ),
     );
@@ -280,5 +272,18 @@ class _PlaceholderPage extends StatelessWidget {
         style: const TextStyle(color: AppColors.textMuted),
       ),
     );
+  }
+}
+Widget _pageFor(String label) {
+  switch (label) {
+    case 'Users':
+      return const UsersScreen();
+    case 'Inventory':
+      return const InventoryScreen();
+    case 'Products':
+      return ProductsScreen();
+    default:
+      return _PlaceholderPage(title: label);
+
   }
 }
