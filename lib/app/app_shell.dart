@@ -4,6 +4,7 @@ import 'package:supermarket/database/tables/catalog_tables.dart';
 import 'package:supermarket/features/inventory/presentation/inventory_screen.dart';
 import 'package:supermarket/features/pos/presentation/pos_screen.dart';
 import 'package:supermarket/features/products/presentation/products_screen.dart';
+import 'package:supermarket/features/reports/presentation/dashboard_screen.dart';
 
 import '../core/security/permissions.dart';
 import '../core/theme/app_colors.dart';
@@ -285,6 +286,8 @@ Widget _pageFor(String label) {
       return ProductsScreen();
     case 'Point of Sale':
       return const PosScreen();
+        case 'Dashboard':
+      return const DashboardScreen();
     default:
       return _PlaceholderPage(title: label);
   }
