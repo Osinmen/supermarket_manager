@@ -77,7 +77,9 @@ class _CheckoutDialogState extends ConsumerState<CheckoutDialog> {
       if (mounted) Navigator.of(context).pop(receipt);
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);
-    } catch (_) {
+    } catch (e, st) {
+      // Show the real cause in the console so it can be fixed.
+      debugPrint('Checkout failed: $e\n$st');
       if (mounted) setState(() => _error = 'Something went wrong. Try again.');
     } finally {
       if (mounted) setState(() => _busy = false);

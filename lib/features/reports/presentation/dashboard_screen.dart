@@ -38,7 +38,11 @@ class DashboardScreen extends ConsumerWidget {
 
     return data.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const Center(child: Text("Couldn't load the dashboard.")),
+      error: (e, st) {
+        // Show the real cause in the console so it can be fixed.
+        debugPrint('Dashboard failed: $e\n$st');
+        return const Center(child: Text("Couldn't load the dashboard."));
+      },
       data: (d) => _Content(data: d, me: me),
     );
   }
