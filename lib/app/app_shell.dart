@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supermarket/database/tables/catalog_tables.dart';
 import 'package:supermarket/features/inventory/presentation/inventory_screen.dart';
+import 'package:supermarket/features/pos/presentation/pos_screen.dart';
 import 'package:supermarket/features/products/presentation/products_screen.dart';
 
 import '../core/security/permissions.dart';
 import '../core/theme/app_colors.dart';
 import '../features/auth/domain/app_user.dart';
 import '../features/auth/presentation/auth_controller.dart';
+
 import 'package:supermarket/features/auth/presentation/users_screen.dart';
 
 class _NavItem {
@@ -57,7 +59,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             onSelect: (i) => setState(() => _selected = i),
             onLogout: () => ref.read(authControllerProvider.notifier).logout(),
           ),
-                        Expanded(child: _pageFor(current.label)),
+          Expanded(child: _pageFor(current.label)),
         ],
       ),
     );
@@ -243,9 +245,7 @@ class _TopBar extends StatelessWidget {
         children: [
           Text(
             title,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
+            style: Theme.of(context).textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const Spacer(),
@@ -274,6 +274,7 @@ class _PlaceholderPage extends StatelessWidget {
     );
   }
 }
+
 Widget _pageFor(String label) {
   switch (label) {
     case 'Users':
@@ -282,8 +283,9 @@ Widget _pageFor(String label) {
       return const InventoryScreen();
     case 'Products':
       return ProductsScreen();
+    case 'Point of Sale':
+      return const PosScreen();
     default:
       return _PlaceholderPage(title: label);
-
   }
 }
